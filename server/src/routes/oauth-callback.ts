@@ -1,0 +1,283 @@
+import { Router, type RequestHandler } from "express";
+import { and, eq } from "drizzle-orm";
+import {
+  oauthAuthorizationStates,
+  oauthConnections,
+} from "@paperclipai/db/schema/oauth";
+import { exchangeToken, fetchAccountInfo } from "../oauth/http.js";
+import { oauthLogger } from "../oauth/logger.js";
+import { validateReturnUrl } from "../oauth/redirect-allowlist.js";
+import type { ProviderRegistry } from "../oauth/registry.js";
+
+export interface OAuthCallbackDeps {
+  // Drizzle db handle; loosely typed so the route does not pull the full
+  // @paperclipai/db Db type into route code.
+  db: any;
+  registry: ProviderRegistry;
+  publicUrl: string;
+  // Narrow method bag — the callback only needs to upsert OAuth token secrets.
+  secretService: {
+    upsertSecretByName: (
+      companyId: string,
+      input: { name: string; value: string },
+    ) => Promise<{ id: string }>;
+  };
+}
+
+function back(
+  deps: OAuthCallbackDeps,
+  returnUrl: string | null | undefined,
+  query: Record<string, string>,
+): string {
+  const safe = validateReturnUrl(returnUrl ?? undefined, deps.publicUrl);
+  const url = new URL(safe, deps.publicUrl);
+  for (const [k, v] of Object.entries(query)) {
+    url.searchParams.set(k, v);
+  }
+  return url.pathname + url.search;
+}
+
+function secretName(
+  providerId: string,
+  accountId: string,
+  kind: "access" | "refresh",
+): string {
+  return `oauth:${providerId}:${accountId}:${kind}`;
+}
+
+export function oauthCallbackRoute(deps: OAuthCallbackDeps): RequestHandler {
+  const r = Router({ mergeParams: true });
+
+  r.get("/", async (req, res) => {
+    const providerId = (req.params as { providerId: string }).providerId;
+    const stateId = typeof req.query.state === "string" ? req.query.state : "";
+    const code = typeof req.query.code === "string" ? req.query.code : "";
+    const providerError =
+      typeof req.query.error === "string" ? req.query.error : "";
+
+    const stateRow = await deps.db.query.oauthAuthorizationStates.findFirst({
+      where: eq(oauthAuthorizationStates.id, stateId),
+    });
+    if (!stateRow) {
+      return res.redirect(
+        302,
+        back(deps, null, { oauth_error: "invalid_state" }),
+      );
+    }
+    if (stateRow.consumedAt) {
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "replay" }),
+      );
+    }
+    if (
+      stateRow.expiresAt instanceof Date
+        ? stateRow.expiresAt.getTime() < Date.now()
+        : new Date(stateRow.expiresAt).getTime() < Date.now()
+    ) {
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "invalid_state" }),
+      );
+    }
+    if (stateRow.providerId !== providerId) {
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "provider_mismatch" }),
+      );
+    }
+
+    if (providerError === "access_denied") {
+      await deps.db
+        .update(oauthAuthorizationStates)
+        .set({ consumedAt: new Date() })
+        .where(eq(oauthAuthorizationStates.id, stateRow.id));
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "user_cancelled" }),
+      );
+    }
+
+    const provider = deps.registry.get(providerId);
+    if (!provider) {
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "provider_not_found" }),
+      );
+    }
+
+    let tokenRaw: Record<string, unknown>;
+    try {
+      tokenRaw = await exchangeToken({
+        url: provider.config.endpoints.token,
+        params: {
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: stateRow.redirectUri,
+          code_verifier: stateRow.codeVerifier,
+        },
+        authMethod: provider.config.authMethod,
+        responseFormat: provider.config.responseFormat,
+        clientId: provider.clientId,
+        clientSecret: provider.clientSecret,
+      });
+    } catch (err) {
+      oauthLogger.error(
+        { provider: providerId, err: { message: (err as Error).message } },
+        "token exchange failed",
+      );
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "token_exchange_failed" }),
+      );
+    }
+
+    let parsedToken;
+    try {
+      if (!provider.shape.parseTokenResponse) {
+        throw new Error("provider shape missing parseTokenResponse");
+      }
+      parsedToken = provider.shape.parseTokenResponse(tokenRaw);
+    } catch (err) {
+      oauthLogger.error(
+        { provider: providerId, err: { message: (err as Error).message } },
+        "token shape violation",
+      );
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, {
+          oauth_error: "token_exchange_failed",
+          detail: "response_shape_violation",
+        }),
+      );
+    }
+
+    let accountRaw: unknown;
+    try {
+      accountRaw = await fetchAccountInfo(
+        provider.config.endpoints.accountInfo,
+        parsedToken.accessToken,
+      );
+    } catch (err) {
+      oauthLogger.error(
+        { provider: providerId, err: { message: (err as Error).message } },
+        "account info fetch failed",
+      );
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "account_info_failed" }),
+      );
+    }
+
+    let parsedAccount;
+    try {
+      if (!provider.shape.parseAccountInfo) {
+        throw new Error("provider shape missing parseAccountInfo");
+      }
+      parsedAccount = provider.shape.parseAccountInfo(accountRaw);
+    } catch {
+      return res.redirect(
+        302,
+        back(deps, stateRow.returnUrl, { oauth_error: "account_info_failed" }),
+      );
+    }
+
+    // Persist secrets via upsert (deterministic name → idempotent reconnects).
+    const accessName = secretName(providerId, parsedAccount.accountId, "access");
+    const accessSecret = await deps.secretService.upsertSecretByName(
+      stateRow.companyId,
+      { name: accessName, value: parsedToken.accessToken },
+    );
+    let refreshSecret: { id: string } | undefined;
+    if (parsedToken.refreshToken) {
+      const refreshName = secretName(
+        providerId,
+        parsedAccount.accountId,
+        "refresh",
+      );
+      refreshSecret = await deps.secretService.upsertSecretByName(
+        stateRow.companyId,
+        { name: refreshName, value: parsedToken.refreshToken },
+      );
+    }
+
+    const expiresAt = parsedToken.expiresInSeconds
+      ? new Date(Date.now() + parsedToken.expiresInSeconds * 1000)
+      : null;
+    const finalScopes = parsedToken.scope ?? stateRow.scopesRequested ?? [];
+
+    try {
+      await deps.db.transaction(async (tx: any) => {
+        const existing = await tx.query.oauthConnections.findFirst({
+          where: and(
+            eq(oauthConnections.companyId, stateRow.companyId),
+            eq(oauthConnections.providerId, providerId),
+          ),
+        });
+        if (
+          existing &&
+          existing.accountId &&
+          parsedAccount.accountId !== existing.accountId
+        ) {
+          throw new Error("ACCOUNT_MISMATCH");
+        }
+        if (existing) {
+          await tx
+            .update(oauthConnections)
+            .set({
+              status: "active",
+              scopes: finalScopes,
+              accountId: parsedAccount.accountId,
+              accountLabel: parsedAccount.accountLabel ?? null,
+              accessTokenSecretId: accessSecret.id,
+              refreshTokenSecretId:
+                refreshSecret?.id ?? existing.refreshTokenSecretId,
+              accessTokenExpiresAt: expiresAt,
+              lastRefreshedAt: new Date(),
+              lastError: null,
+              lastErrorAt: null,
+              refreshAttemptCount: 0,
+              updatedAt: new Date(),
+            })
+            .where(eq(oauthConnections.id, existing.id));
+        } else {
+          await tx.insert(oauthConnections).values({
+            companyId: stateRow.companyId,
+            providerId,
+            status: "active",
+            accountId: parsedAccount.accountId,
+            accountLabel: parsedAccount.accountLabel ?? null,
+            scopes: finalScopes,
+            accessTokenSecretId: accessSecret.id,
+            refreshTokenSecretId: refreshSecret?.id ?? null,
+            accessTokenExpiresAt: expiresAt,
+            lastRefreshedAt: new Date(),
+          });
+        }
+        await tx
+          .update(oauthAuthorizationStates)
+          .set({ consumedAt: new Date() })
+          .where(eq(oauthAuthorizationStates.id, stateRow.id));
+      });
+    } catch (err) {
+      if ((err as Error).message === "ACCOUNT_MISMATCH") {
+        await deps.db
+          .update(oauthAuthorizationStates)
+          .set({ consumedAt: new Date() })
+          .where(eq(oauthAuthorizationStates.id, stateRow.id));
+        return res.redirect(
+          302,
+          back(deps, stateRow.returnUrl, { oauth_error: "account_mismatch" }),
+        );
+      }
+      throw err;
+    }
+
+    return res.redirect(
+      302,
+      back(deps, stateRow.returnUrl, { oauth_connected: providerId }),
+    );
+  });
+
+  return r;
+}
