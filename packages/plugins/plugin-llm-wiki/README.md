@@ -75,8 +75,8 @@ The focused Vitest suite covers:
 
 Remaining alpha gaps:
 
-- Browser screenshot capture is maintained separately under `tests/screenshots`
-  and is not part of the cheap package verification path above.
+- Browser screenshot capture is maintained separately under `tests/screenshots`;
+  generated `screenshots/` outputs are local artifacts and are ignored by git.
 - Host-level plugin install and live agent invocation still need Paperclip
   server/runtime smoke coverage when preparing a release candidate.
 
