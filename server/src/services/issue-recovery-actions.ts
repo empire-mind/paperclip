@@ -94,6 +94,32 @@ function isUniqueRecoveryActionConflict(error: unknown) {
 }
 
 export function issueRecoveryActionService(db: Db) {
+  const upsertQueues = new Map<string, Promise<void>>();
+
+  async function runExclusiveUpsert<T>(
+    input: UpsertIssueRecoveryActionInput,
+    task: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${input.companyId}:${input.sourceIssueId}`;
+    const previous = upsertQueues.get(key) ?? Promise.resolve();
+    let release: () => void = () => {};
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const next = previous.catch(() => undefined).then(() => current);
+    upsertQueues.set(key, next);
+
+    await previous.catch(() => undefined);
+    try {
+      return await task();
+    } finally {
+      release();
+      if (upsertQueues.get(key) === next) {
+        upsertQueues.delete(key);
+      }
+    }
+  }
+
   async function getActiveForIssue(companyId: string, sourceIssueId: string): Promise<IssueRecoveryAction | null> {
     const row = await db
       .select()
@@ -142,10 +168,10 @@ export function issueRecoveryActionService(db: Db) {
         `Failed to upsert active recovery action for issue ${input.sourceIssueId} after ${MAX_UPSERT_RETRIES} retries`,
       );
     }
-    return upsertSourceScoped(input, retryCount + 1);
+    return upsertSourceScopedUnlocked(input, retryCount + 1);
   }
 
-  async function upsertSourceScoped(
+  async function upsertSourceScopedUnlocked(
     input: UpsertIssueRecoveryActionInput,
     retryCount = 0,
   ): Promise<IssueRecoveryAction> {
@@ -223,6 +249,12 @@ export function issueRecoveryActionService(db: Db) {
       if (!isUniqueRecoveryActionConflict(error)) throw error;
       return retryUpsertSourceScoped(input, retryCount, error);
     }
+  }
+
+  async function upsertSourceScoped(
+    input: UpsertIssueRecoveryActionInput,
+  ): Promise<IssueRecoveryAction> {
+    return runExclusiveUpsert(input, () => upsertSourceScopedUnlocked(input));
   }
 
   async function resolveActiveForIssue(
