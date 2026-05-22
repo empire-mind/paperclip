@@ -176,6 +176,23 @@ describe("CommandPalette", () => {
     container.remove();
   });
 
+  it("caps the no-query quick issue fetch to the visible command palette slice", async () => {
+    const { root } = renderWithQueryClient(<CommandPalette />, container);
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+    });
+
+    await waitForAssertion(() => {
+      expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", { limit: 20 });
+    });
+    expect(mockIssuesApi.list).not.toHaveBeenCalledWith("company-1");
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it("includes routine execution issues in search queries", async () => {
     const { root } = renderWithQueryClient(<CommandPalette />, container);
 
