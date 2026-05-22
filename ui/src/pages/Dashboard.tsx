@@ -67,8 +67,8 @@ export function Dashboard() {
   });
 
   const { data: issues } = useQuery({
-    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: DASHBOARD_RECENT_ISSUE_LIMIT }],
-    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: DASHBOARD_RECENT_ISSUE_LIMIT }),
+    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: DASHBOARD_RECENT_ISSUE_LIMIT, sort: "recent" }],
+    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: DASHBOARD_RECENT_ISSUE_LIMIT, sort: "recent" }),
     enabled: !!selectedCompanyId,
   });
 

@@ -232,6 +232,7 @@ export interface IssueFilters {
   includePluginOperations?: boolean;
   includeBlockedBy?: boolean;
   includeBlockedInboxAttention?: boolean;
+  sort?: "default" | "recent";
   q?: string;
   limit?: number;
   offset?: number;
@@ -3394,6 +3395,7 @@ export function issueService(db: Db) {
       const contextUserId = unreadForUserId ?? touchedByUserId ?? inboxArchivedByUserId;
       const includeBlockedBy = filters?.includeBlockedBy === true;
       const includeBlockedInboxAttention = filters?.includeBlockedInboxAttention === true;
+      const sortMode = filters?.sort === "recent" ? "recent" : "default";
       const rawSearch = filters?.q?.trim() ?? "";
       const hasSearch = rawSearch.length > 0;
       const escapedSearch = hasSearch ? escapeLikePattern(rawSearch) : "";
@@ -3506,17 +3508,24 @@ export function issueService(db: Db) {
         END
       `;
       const canonicalLastActivityAt = issueCanonicalLastActivityAtExpr(companyId);
+      const defaultOrder = [
+        hasSearch ? asc(searchOrder) : asc(priorityOrder),
+        asc(priorityOrder),
+        desc(canonicalLastActivityAt),
+        desc(issues.updatedAt),
+        desc(issues.id),
+      ];
+      const recentOrder = [
+        ...(hasSearch ? [asc(searchOrder)] : []),
+        desc(canonicalLastActivityAt),
+        desc(issues.updatedAt),
+        desc(issues.id),
+      ];
       const baseQuery = db
         .select(issueListSelect)
         .from(issues)
         .where(and(...conditions))
-        .orderBy(
-          hasSearch ? asc(searchOrder) : asc(priorityOrder),
-          asc(priorityOrder),
-          desc(canonicalLastActivityAt),
-          desc(issues.updatedAt),
-          desc(issues.id),
-        );
+        .orderBy(...(sortMode === "recent" ? recentOrder : defaultOrder));
       const pageQuery = offset > 0
         ? (limit === undefined ? baseQuery.offset(offset) : baseQuery.limit(limit).offset(offset))
         : (limit === undefined ? baseQuery : baseQuery.limit(limit));

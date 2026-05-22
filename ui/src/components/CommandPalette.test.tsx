@@ -184,7 +184,7 @@ describe("CommandPalette", () => {
     });
 
     await waitForAssertion(() => {
-      expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", { limit: 20 });
+      expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", { limit: 20, sort: "recent" });
     });
     expect(mockIssuesApi.list).not.toHaveBeenCalledWith("company-1");
 

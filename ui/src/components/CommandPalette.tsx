@@ -67,8 +67,8 @@ export function CommandPalette() {
   }, [open]);
 
   const { data: issues = [] } = useQuery({
-    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: QUICK_ISSUE_LIMIT, surface: "command-palette" }],
-    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: QUICK_ISSUE_LIMIT }),
+    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: QUICK_ISSUE_LIMIT, sort: "recent", surface: "command-palette" }],
+    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: QUICK_ISSUE_LIMIT, sort: "recent" }),
     enabled: !!selectedCompanyId && open && searchQuery.length === 0,
   });
 

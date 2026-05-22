@@ -175,13 +175,14 @@ export function useInboxBadge(companyId: string | null | undefined) {
   });
 
   const { data: mineIssuesRaw = [] } = useQuery({
-    queryKey: queryKeys.issues.listMineByMe(companyId!),
+    queryKey: [...queryKeys.issues.listMineByMe(companyId!), { limit: INBOX_BADGE_ISSUE_LIMIT, sort: "recent" }],
     queryFn: () =>
       issuesApi.list(companyId!, {
         touchedByUserId: "me",
         inboxArchivedByUserId: "me",
         status: INBOX_ISSUE_STATUSES,
         limit: INBOX_BADGE_ISSUE_LIMIT,
+        sort: "recent",
       }),
     enabled: !!companyId,
   });

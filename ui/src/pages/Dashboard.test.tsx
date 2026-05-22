@@ -142,7 +142,7 @@ describe("Dashboard", () => {
       );
     });
 
-    expect(apiMocks.issuesList).toHaveBeenCalledWith("company-1", { limit: 25 });
+    expect(apiMocks.issuesList).toHaveBeenCalledWith("company-1", { limit: 25, sort: "recent" });
     expect(apiMocks.issuesList).not.toHaveBeenCalledWith("company-1", undefined);
     await waitForAssertion(() => {
       expect(container.textContent).toContain("Most recent 25");

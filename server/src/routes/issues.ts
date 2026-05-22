@@ -1445,6 +1445,7 @@ export function issueRoutes(
       ? Number.parseInt(rawOffset, 10)
       : null;
     const attention = req.query.attention as string | undefined;
+    const sort = req.query.sort as string | undefined;
 
     if (assigneeUserFilterRaw === "me" && (!assigneeUserId || req.actor.type !== "board")) {
       res.status(403).json({ error: "assigneeUserId=me requires board authentication" });
@@ -1464,6 +1465,10 @@ export function issueRoutes(
     }
     if (attention !== undefined && attention !== "blocked") {
       res.status(400).json({ error: "attention must be 'blocked' when provided" });
+      return;
+    }
+    if (sort !== undefined && sort !== "default" && sort !== "recent") {
+      res.status(400).json({ error: "sort must be 'default' or 'recent' when provided" });
       return;
     }
     if (rawLimit !== undefined && (parsedLimit === null || !Number.isInteger(parsedLimit) || parsedLimit <= 0)) {
@@ -1503,6 +1508,7 @@ export function issueRoutes(
       includeBlockedBy: req.query.includeBlockedBy === "true" || req.query.includeBlockedBy === "1",
       includeBlockedInboxAttention:
         req.query.includeBlockedInboxAttention === "true" || req.query.includeBlockedInboxAttention === "1",
+      sort: sort === "recent" ? "recent" : undefined,
       q: req.query.q as string | undefined,
       limit,
       offset,
