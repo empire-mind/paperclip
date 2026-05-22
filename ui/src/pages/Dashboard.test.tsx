@@ -72,6 +72,26 @@ import { Dashboard } from "./Dashboard";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+async function waitForAssertion(assertion: () => void, attempts = 20) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await flush();
+    }
+  }
+  throw lastError;
+}
+
 function resetDashboardApiMocks() {
   apiMocks.dashboardSummary.mockResolvedValue({
     agents: { active: 0, running: 0, paused: 0, error: 0 },
@@ -124,6 +144,10 @@ describe("Dashboard", () => {
 
     expect(apiMocks.issuesList).toHaveBeenCalledWith("company-1", { limit: 25 });
     expect(apiMocks.issuesList).not.toHaveBeenCalledWith("company-1", undefined);
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain("Most recent 25");
+      expect((container.textContent?.match(/Most recent 25/g) ?? []).length).toBe(2);
+    });
 
     act(() => {
       root.unmount();
