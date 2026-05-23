@@ -905,6 +905,7 @@ describe("IssueDetail", () => {
     expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", {
       parentId: "parent-1",
       includeBlockedBy: true,
+      limit: 200,
     });
     expect(container.querySelector('a[aria-label="Previous sub-issue: PAP-1 - Previous sibling"]')).toBeTruthy();
     expect(container.querySelector('a[aria-label="Next sub-issue: PAP-3 - Next sibling"]')).toBeTruthy();
@@ -961,6 +962,7 @@ describe("IssueDetail", () => {
     expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", {
       descendantOf: "issue-parent",
       includeBlockedBy: true,
+      limit: 200,
     });
     expect(container.querySelector('a[aria-label="Next sub-issue: PAP-11 - First child"]')).toBeTruthy();
     expect(container.textContent).toContain("Next");

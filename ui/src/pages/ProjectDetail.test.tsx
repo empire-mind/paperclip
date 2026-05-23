@@ -182,6 +182,8 @@ describe("ProjectDetail", () => {
     expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", {
       projectId: "project-1",
       originKindPrefix: "plugin:paperclip.missions",
+      limit: 200,
+      sort: "recent",
     });
   });
 });

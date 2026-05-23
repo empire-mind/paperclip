@@ -182,6 +182,7 @@ const sourceLabels: Record<string, string> = {
 };
 
 const LIVE_SCROLL_BOTTOM_TOLERANCE_PX = 32;
+const AGENT_DETAIL_ISSUES_LIMIT = 200;
 type ScrollContainer = Window | HTMLElement;
 
 function isWindowContainer(container: ScrollContainer): container is Window {
@@ -683,8 +684,18 @@ export function AgentDetail() {
   });
 
   const { data: allIssues } = useQuery({
-    queryKey: [...queryKeys.issues.list(resolvedCompanyId!), "participant-agent", resolvedAgentId ?? "__none__"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { participantAgentId: resolvedAgentId! }),
+    queryKey: [
+      ...queryKeys.issues.list(resolvedCompanyId!),
+      "participant-agent",
+      resolvedAgentId ?? "__none__",
+      { limit: AGENT_DETAIL_ISSUES_LIMIT, sort: "recent" },
+    ],
+    queryFn: () =>
+      issuesApi.list(resolvedCompanyId!, {
+        participantAgentId: resolvedAgentId!,
+        limit: AGENT_DETAIL_ISSUES_LIMIT,
+        sort: "recent",
+      }),
     enabled: !!resolvedCompanyId && !!resolvedAgentId && needsDashboardData,
   });
 

@@ -53,6 +53,8 @@ import { User, Hexagon, ArrowUpRight, Tag, Plus, GitBranch, FolderOpen, Check, E
 import { AgentIcon } from "./AgentIconPicker";
 import { InlineEntitySelector, type InlineEntityOption } from "./InlineEntitySelector";
 
+const RELATIONSHIP_ISSUES_LIMIT = 200;
+
 function TruncatedCopyable({ value, icon: Icon }: { value: string; icon: React.ComponentType<{ className?: string }> }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -444,8 +446,12 @@ export function IssueProperties({
   });
 
   const { data: allIssues } = useQuery({
-    queryKey: queryKeys.issues.list(companyId!),
-    queryFn: () => issuesApi.list(companyId!),
+    queryKey: [
+      ...queryKeys.issues.list(companyId!),
+      "relationship-picker",
+      { limit: RELATIONSHIP_ISSUES_LIMIT, sort: "recent" },
+    ],
+    queryFn: () => issuesApi.list(companyId!, { limit: RELATIONSHIP_ISSUES_LIMIT, sort: "recent" }),
     enabled: !!companyId && (blockedByOpen || parentOpen),
   });
 

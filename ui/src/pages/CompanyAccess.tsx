@@ -51,6 +51,7 @@ const implicitRoleGrantMap: Record<NonNullable<CompanyMember["membershipRole"]>,
 };
 
 const reassignmentIssueStatuses = "backlog,todo,in_progress,in_review,blocked,failed,timed_out";
+const REASSIGNMENT_ISSUES_LIMIT = 500;
 type EditableMemberStatus = "pending" | "active" | "suspended";
 
 function getImplicitGrantKeys(role: CompanyMember["membershipRole"]) {
@@ -178,6 +179,7 @@ export function CompanyAccess() {
       issuesApi.list(selectedCompanyId!, {
         assigneeUserId: removingMember!.principalId,
         status: reassignmentIssueStatuses,
+        limit: REASSIGNMENT_ISSUES_LIMIT,
       }),
     enabled: !!selectedCompanyId && !!removingMember,
   });

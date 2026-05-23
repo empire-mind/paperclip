@@ -461,6 +461,10 @@ describe("IssueProperties", () => {
     });
     await flush();
 
+    expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", {
+      limit: 200,
+      sort: "recent",
+    });
     expect(container.querySelector('input[placeholder="Search issues..."]')).not.toBeNull();
 
     const candidateButton = Array.from(container.querySelectorAll("button"))

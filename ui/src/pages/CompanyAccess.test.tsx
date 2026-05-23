@@ -294,6 +294,11 @@ describe("CompanyAccess", () => {
     });
     await flushReact();
 
+    expect(listIssuesMock).toHaveBeenCalledWith("company-1", {
+      assigneeUserId: "user-1",
+      status: "backlog,todo,in_progress,in_review,blocked,failed,timed_out",
+      limit: 500,
+    });
     expect(document.body.textContent).toContain("Remove member");
     expect(document.body.textContent).toContain("Assigned to removed user");
 

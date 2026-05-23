@@ -158,6 +158,8 @@ type PluginIssuesListFilters = {
   originKindPrefix?: string;
   originId?: string;
   descendantOf?: string;
+  sort?: "default" | "recent";
+  limit?: number;
   includeRoutineExecutions?: boolean;
 };
 
@@ -175,6 +177,8 @@ type PluginAssigneePickerSelection = {
   assigneeAgentId: string | null;
   assigneeUserId: string | null;
 };
+
+const PLUGIN_ISSUES_LIST_LIMIT = 200;
 
 type PluginAssigneePickerProps = {
   companyId?: string | null;
@@ -250,6 +254,7 @@ function PluginSdkIssuesList({
     () => compactIssueFilters({
       ...(filters ?? {}),
       projectId: filters?.projectId ?? projectId ?? undefined,
+      limit: filters?.limit ?? PLUGIN_ISSUES_LIST_LIMIT,
     }),
     [filters, projectId],
   );
@@ -280,7 +285,11 @@ function PluginSdkIssuesList({
 
   const { data: issues, isLoading, error } = useQuery({
     queryKey: issuesQueryKey,
-    queryFn: () => issuesApi.list(companyId!, issueFilters),
+    queryFn: () =>
+      issuesApi.list(companyId!, {
+        ...issueFilters,
+        limit: issueFilters.limit ?? PLUGIN_ISSUES_LIST_LIMIT,
+      }),
     enabled: !!companyId,
   });
 

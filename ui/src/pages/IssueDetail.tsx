@@ -172,6 +172,7 @@ const FEEDBACK_TERMS_URL = import.meta.env.VITE_FEEDBACK_TERMS_URL?.trim() || "h
 const ISSUE_COMMENT_PAGE_SIZE = 50;
 const ISSUE_COMMENT_AUTOLOAD_LIMIT = ISSUE_COMMENT_PAGE_SIZE * 3;
 const JUMP_TO_LATEST_MAX_COMMENT_PAGES = 10;
+const ISSUE_TREE_LIST_LIMIT = 200;
 const TREE_CONTROL_MODE_LABEL: Record<IssueTreeControlMode, string> = {
   pause: "Pause subtree",
   resume: "Resume subtree",
@@ -1366,9 +1367,17 @@ export function IssueDetail() {
   const { data: rawChildIssues = [], isLoading: childIssuesLoading } = useQuery({
     queryKey:
       issue?.id && resolvedCompanyId
-        ? queryKeys.issues.listByDescendantRoot(resolvedCompanyId, issue.id)
+        ? [
+            ...queryKeys.issues.listByDescendantRoot(resolvedCompanyId, issue.id),
+            { limit: ISSUE_TREE_LIST_LIMIT },
+          ]
         : ["issues", "parent", "pending"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { descendantOf: issue!.id, includeBlockedBy: true }),
+    queryFn: () =>
+      issuesApi.list(resolvedCompanyId!, {
+        descendantOf: issue!.id,
+        includeBlockedBy: true,
+        limit: ISSUE_TREE_LIST_LIMIT,
+      }),
     enabled: !!resolvedCompanyId && !!issue?.id,
     placeholderData: keepPreviousDataForSameQueryTail<Issue[]>(issue?.id ?? "pending"),
   });
@@ -1379,9 +1388,17 @@ export function IssueDetail() {
   } = useQuery({
     queryKey:
       issue?.parentId && resolvedCompanyId
-        ? queryKeys.issues.listByParent(resolvedCompanyId, issue.parentId)
+        ? [
+            ...queryKeys.issues.listByParent(resolvedCompanyId, issue.parentId),
+            { limit: ISSUE_TREE_LIST_LIMIT },
+          ]
         : ["issues", "siblings", "pending"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { parentId: issue!.parentId!, includeBlockedBy: true }),
+    queryFn: () =>
+      issuesApi.list(resolvedCompanyId!, {
+        parentId: issue!.parentId!,
+        includeBlockedBy: true,
+        limit: ISSUE_TREE_LIST_LIMIT,
+      }),
     enabled: !!resolvedCompanyId && !!issue?.parentId,
   });
   const { data: companyLiveRuns } = useQuery({

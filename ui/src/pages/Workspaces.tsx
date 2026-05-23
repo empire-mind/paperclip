@@ -22,6 +22,8 @@ type ProjectWorkspaceGroup = {
   runningServiceCount: number;
 };
 
+const WORKSPACE_ISSUES_LIMIT = 200;
+
 function buildProjectWorkspaceGroups(input: {
   projects: Project[];
   issues: Issue[];
@@ -86,8 +88,14 @@ export function Workspaces() {
     enabled: Boolean(selectedCompanyId && isolatedWorkspacesEnabled),
   });
   const { data: issues = [], isLoading: issuesLoading, error: issuesError } = useQuery({
-    queryKey: selectedCompanyId ? queryKeys.issues.list(selectedCompanyId) : ["issues", "__workspaces__", "disabled"],
-    queryFn: () => issuesApi.list(selectedCompanyId!),
+    queryKey: selectedCompanyId
+      ? [
+          ...queryKeys.issues.list(selectedCompanyId),
+          "workspaces",
+          { limit: WORKSPACE_ISSUES_LIMIT, sort: "recent" },
+        ]
+      : ["issues", "__workspaces__", "disabled"],
+    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: WORKSPACE_ISSUES_LIMIT, sort: "recent" }),
     enabled: Boolean(selectedCompanyId && isolatedWorkspacesEnabled),
   });
   const {

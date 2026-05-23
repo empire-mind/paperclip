@@ -56,6 +56,8 @@ type WorkspaceFormState = {
 
 type ExecutionWorkspaceTab = "services" | "configuration" | "runtime_logs" | "issues" | "routines";
 
+const LINKED_WORKSPACE_ISSUES_LIMIT = 200;
+
 function resolveExecutionWorkspaceTab(pathname: string, workspaceId: string): ExecutionWorkspaceTab | null {
   const segments = pathname.split("/").filter(Boolean);
   const executionWorkspacesIndex = segments.indexOf("execution-workspaces");
@@ -569,9 +571,16 @@ export function ExecutionWorkspaceDetail() {
   const derivedWorkspace = derivedWorkspaceQuery.data ?? null;
   const linkedIssuesQuery = useQuery({
     queryKey: workspace
-      ? queryKeys.issues.listByExecutionWorkspace(workspace.companyId, workspace.id)
+      ? [
+          ...queryKeys.issues.listByExecutionWorkspace(workspace.companyId, workspace.id),
+          { limit: LINKED_WORKSPACE_ISSUES_LIMIT },
+        ]
       : ["issues", "__execution-workspace__", "__none__"],
-    queryFn: () => issuesApi.list(workspace!.companyId, { executionWorkspaceId: workspace!.id }),
+    queryFn: () =>
+      issuesApi.list(workspace!.companyId, {
+        executionWorkspaceId: workspace!.id,
+        limit: LINKED_WORKSPACE_ISSUES_LIMIT,
+      }),
     enabled: Boolean(workspace?.companyId),
   });
   const linkedIssues = linkedIssuesQuery.data ?? [];
