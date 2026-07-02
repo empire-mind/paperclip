@@ -28,6 +28,7 @@ import type { Agent, Issue } from "@paperclipai/shared";
 import { PluginSlotOutlet } from "@/plugins/slots";
 
 const DASHBOARD_ACTIVITY_LIMIT = 10;
+const DASHBOARD_RECENT_ISSUE_LIMIT = 25;
 
 function getRecentIssues(issues: Issue[]): Issue[] {
   return [...issues]
@@ -66,8 +67,8 @@ export function Dashboard() {
   });
 
   const { data: issues } = useQuery({
-    queryKey: queryKeys.issues.list(selectedCompanyId!),
-    queryFn: () => issuesApi.list(selectedCompanyId!),
+    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: DASHBOARD_RECENT_ISSUE_LIMIT, sort: "recent" }],
+    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: DASHBOARD_RECENT_ISSUE_LIMIT, sort: "recent" }),
     enabled: !!selectedCompanyId,
   });
 
@@ -295,10 +296,10 @@ export function Dashboard() {
             <ChartCard title="Run Activity" subtitle="Last 14 days">
               <RunActivityChart activity={data.runActivity} />
             </ChartCard>
-            <ChartCard title="Issues by Priority" subtitle="Last 14 days">
+            <ChartCard title="Issues by Priority" subtitle={`Most recent ${DASHBOARD_RECENT_ISSUE_LIMIT}`}>
               <PriorityChart issues={issues ?? []} />
             </ChartCard>
-            <ChartCard title="Issues by Status" subtitle="Last 14 days">
+            <ChartCard title="Issues by Status" subtitle={`Most recent ${DASHBOARD_RECENT_ISSUE_LIMIT}`}>
               <IssueStatusChart issues={issues ?? []} />
             </ChartCard>
             <ChartCard title="Success Rate" subtitle="Last 14 days">

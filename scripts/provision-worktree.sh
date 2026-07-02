@@ -10,6 +10,10 @@ worktree_config_path="$paperclip_dir/config.json"
 worktree_env_path="$paperclip_dir/.env"
 worktree_name="${PAPERCLIP_WORKSPACE_BRANCH:-$(basename "$worktree_cwd")}"
 
+global_cli_disabled() {
+  [[ "${PAPERCLIP_WORKTREE_DISABLE_GLOBAL_CLI:-}" == "1" ]]
+}
+
 if [[ ! -d "$base_cwd" ]]; then
   echo "Base workspace does not exist: $base_cwd" >&2
   exit 1
@@ -43,6 +47,10 @@ run_isolated_worktree_init() {
     return 0
   fi
 
+  if global_cli_disabled; then
+    return 127
+  fi
+
   if command -v pnpm >/dev/null 2>&1 && pnpm paperclipai --help >/dev/null 2>&1; then
     (
       cd "$worktree_cwd"
@@ -63,13 +71,17 @@ run_isolated_worktree_init() {
 }
 
 paperclipai_command_available() {
-  if command -v pnpm >/dev/null 2>&1 && pnpm paperclipai --help >/dev/null 2>&1; then
-    return 0
-  fi
-
   local base_cli_tsx_path="$base_cwd/cli/node_modules/tsx/dist/cli.mjs"
   local base_cli_entry_path="$base_cwd/cli/src/index.ts"
   if command -v node >/dev/null 2>&1 && [[ -f "$base_cli_tsx_path" ]] && [[ -f "$base_cli_entry_path" ]]; then
+    return 0
+  fi
+
+  if global_cli_disabled; then
+    return 1
+  fi
+
+  if command -v pnpm >/dev/null 2>&1 && pnpm paperclipai --help >/dev/null 2>&1; then
     return 0
   fi
 

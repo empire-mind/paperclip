@@ -37,6 +37,8 @@ type ProjectBaseTab = "overview" | "list" | "plugin-operations" | "workspaces" |
 type ProjectPluginTab = `plugin:${string}`;
 type ProjectTab = ProjectBaseTab | ProjectPluginTab;
 
+const PROJECT_DETAIL_ISSUES_LIMIT = 200;
+
 function isProjectPluginTab(value: string | null): value is ProjectPluginTab {
   return typeof value === "string" && value.startsWith("plugin:");
 }
@@ -180,8 +182,11 @@ function ProjectIssuesList({ projectId, companyId }: { projectId: string; compan
   const liveIssueIds = useMemo(() => collectLiveIssueIds(liveRuns), [liveRuns]);
 
   const { data: issues, isLoading, error } = useQuery({
-    queryKey: queryKeys.issues.listByProject(companyId, projectId),
-    queryFn: () => issuesApi.list(companyId, { projectId }),
+    queryKey: [
+      ...queryKeys.issues.listByProject(companyId, projectId),
+      { limit: PROJECT_DETAIL_ISSUES_LIMIT, sort: "recent" },
+    ],
+    queryFn: () => issuesApi.list(companyId, { projectId, limit: PROJECT_DETAIL_ISSUES_LIMIT, sort: "recent" }),
     enabled: !!companyId,
   });
 
@@ -240,8 +245,17 @@ function ProjectPluginOperationsList({
   const liveIssueIds = useMemo(() => collectLiveIssueIds(liveRuns), [liveRuns]);
 
   const { data: issues, isLoading, error } = useQuery({
-    queryKey: queryKeys.issues.listPluginOperationsByProject(companyId, projectId, originKindPrefix),
-    queryFn: () => issuesApi.list(companyId, { projectId, originKindPrefix }),
+    queryKey: [
+      ...queryKeys.issues.listPluginOperationsByProject(companyId, projectId, originKindPrefix),
+      { limit: PROJECT_DETAIL_ISSUES_LIMIT, sort: "recent" },
+    ],
+    queryFn: () =>
+      issuesApi.list(companyId, {
+        projectId,
+        originKindPrefix,
+        limit: PROJECT_DETAIL_ISSUES_LIMIT,
+        sort: "recent",
+      }),
     enabled: !!companyId && !!projectId,
   });
 
@@ -337,9 +351,18 @@ export function ProjectDetail() {
   const workspaceTabProjectId = project?.id ?? null;
   const { data: workspaceTabIssues = [], isLoading: isWorkspaceTabIssuesLoading, error: workspaceTabIssuesError } = useQuery({
     queryKey: workspaceTabProjectId && resolvedCompanyId
-      ? queryKeys.issues.listByProject(resolvedCompanyId, workspaceTabProjectId)
+      ? [
+          ...queryKeys.issues.listByProject(resolvedCompanyId, workspaceTabProjectId),
+          "workspace-tab",
+          { limit: PROJECT_DETAIL_ISSUES_LIMIT, sort: "recent" },
+        ]
       : ["issues", "__workspace-tab__", "disabled"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { projectId: workspaceTabProjectId! }),
+    queryFn: () =>
+      issuesApi.list(resolvedCompanyId!, {
+        projectId: workspaceTabProjectId!,
+        limit: PROJECT_DETAIL_ISSUES_LIMIT,
+        sort: "recent",
+      }),
     enabled: Boolean(resolvedCompanyId && workspaceTabProjectId && isolatedWorkspacesEnabled),
   });
   const {

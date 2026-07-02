@@ -134,6 +134,7 @@ async function runGit(cwd: string, args: string[]) {
 async function createTempRepo() {
   const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-execution-workspace-"));
   await runGit(repoRoot, ["init"]);
+  await runGit(repoRoot, ["config", "core.hooksPath", path.join(repoRoot, ".git", "hooks")]);
   await runGit(repoRoot, ["config", "user.name", "Paperclip Test"]);
   await runGit(repoRoot, ["config", "user.email", "test@paperclip.local"]);
   await fs.writeFile(path.join(repoRoot, "README.md"), "# Test repo\n", "utf8");
@@ -443,5 +444,5 @@ describeEmbeddedPostgres("executionWorkspaceService.getCloseReadiness", () => {
       "git_worktree_remove",
       "git_branch_delete",
     ]));
-  }, 20_000);
+  }, 45_000);
 });

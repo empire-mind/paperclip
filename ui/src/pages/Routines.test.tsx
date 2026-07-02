@@ -583,7 +583,11 @@ describe("Routines page", () => {
       await flush();
     });
 
-    expect(issuesListMock).toHaveBeenCalledWith("company-1", { originKind: "routine_execution" });
+    expect(issuesListMock).toHaveBeenCalledWith("company-1", {
+      originKind: "routine_execution",
+      limit: 200,
+      sort: "recent",
+    });
 
     await act(async () => {
       root.unmount();

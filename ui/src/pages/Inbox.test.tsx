@@ -289,6 +289,33 @@ describe("Inbox toolbar", () => {
       root.unmount();
     });
   });
+
+  it("caps full inbox issue fetches to avoid loading the entire company issue set", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 0, gcTime: 0 } },
+    });
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <Inbox />
+        </QueryClientProvider>,
+      );
+    });
+
+    expect(apiMocks.issuesList).toHaveBeenCalledWith("company-1", expect.objectContaining({
+      includeRoutineExecutions: true,
+      limit: 200,
+    }));
+    expect(apiMocks.issuesList).not.toHaveBeenCalledWith("company-1", expect.objectContaining({
+      limit: 500,
+    }));
+
+    act(() => {
+      root.unmount();
+    });
+  });
 });
 
 describe("FailedRunInboxRow", () => {

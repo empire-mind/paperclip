@@ -171,6 +171,7 @@ describe("onboard", () => {
   it("keeps tailnet quickstart on loopback until tailscale is available", async () => {
     const configPath = createFreshConfigPath();
     delete process.env.PAPERCLIP_TAILNET_BIND_HOST;
+    process.env.PATH = "";
 
     await onboard({ config: configPath, yes: true, invokedByRun: true, bind: "tailnet" });
 

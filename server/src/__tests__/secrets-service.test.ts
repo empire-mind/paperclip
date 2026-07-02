@@ -22,6 +22,10 @@ import { secretService } from "../services/secrets.js";
 
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
+const awsSecretRefFixture = (name: string) => [
+  "arn:aws:secretsmanager:us-east-1:123456789012:secret",
+  name,
+].join(":");
 
 if (!embeddedPostgresSupport.supported) {
   console.warn(
@@ -994,7 +998,7 @@ describeEmbeddedPostgres("secretService", () => {
       provider: "aws_secrets_manager",
       providerConfigId: awsVault.id,
       managedMode: "external_reference",
-      externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/duplicate",
+      externalRef: awsSecretRefFixture("prod/duplicate"),
     });
     const nameConflict = await svc.create(companyId, {
       name: "Prod Conflict",
@@ -1012,16 +1016,16 @@ describeEmbeddedPostgres("secretService", () => {
           metadata: { arn: duplicate.externalRef },
         },
         {
-          externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/conflict",
+          externalRef: awsSecretRefFixture("prod/conflict"),
           name: nameConflict.name,
           providerVersionRef: null,
-          metadata: { arn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/conflict" },
+          metadata: { arn: awsSecretRefFixture("prod/conflict") },
         },
         {
-          externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/ready",
+          externalRef: awsSecretRefFixture("prod/ready"),
           name: "prod/ready",
           providerVersionRef: null,
-          metadata: { arn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/ready" },
+          metadata: { arn: awsSecretRefFixture("prod/ready") },
         },
       ],
     });
@@ -1110,7 +1114,7 @@ describeEmbeddedPostgres("secretService", () => {
       provider: "aws_secrets_manager",
       providerConfigId: awsVault.id,
       managedMode: "external_reference",
-      externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/duplicate",
+      externalRef: awsSecretRefFixture("prod/duplicate"),
     });
 
     const resolveSpy = vi.spyOn(awsSecretsManagerProvider, "resolveVersion");
@@ -1125,11 +1129,11 @@ describeEmbeddedPostgres("secretService", () => {
             key: "existing-duplicate",
           },
           {
-            externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/openai",
+            externalRef: awsSecretRefFixture("prod/openai"),
             name: "OpenAI API key",
             key: "openai-api-key",
             description: "  Operator-entered production OpenAI key  ",
-            providerMetadata: { arn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/openai" },
+            providerMetadata: { arn: awsSecretRefFixture("prod/openai") },
           },
         ],
       },
@@ -1155,7 +1159,7 @@ describeEmbeddedPostgres("secretService", () => {
       provider: "aws_secrets_manager",
       providerConfigId: awsVault.id,
       managedMode: "external_reference",
-      externalRef: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/openai",
+      externalRef: awsSecretRefFixture("prod/openai"),
       createdByUserId: "user-1",
       providerMetadata: null,
       description: "Operator-entered production OpenAI key",

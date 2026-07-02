@@ -69,6 +69,8 @@ type RoutineGroupBy = "none" | "project" | "assignee";
 type RoutineSortField = "updated" | "created" | "title" | "lastRun";
 type RoutineSortDir = "asc" | "desc";
 
+const ROUTINE_EXECUTION_ISSUES_LIMIT = 200;
+
 type RoutineViewState = {
   sortField: RoutineSortField;
   sortDir: RoutineSortDir;
@@ -269,8 +271,17 @@ export function Routines() {
     enabled: !!selectedCompanyId,
   });
   const { data: routineExecutionIssues, isLoading: recentRunsLoading, error: recentRunsError } = useQuery({
-    queryKey: [...queryKeys.issues.list(selectedCompanyId!), "routine-executions"],
-    queryFn: () => issuesApi.list(selectedCompanyId!, { originKind: "routine_execution" }),
+    queryKey: [
+      ...queryKeys.issues.list(selectedCompanyId!),
+      "routine-executions",
+      { limit: ROUTINE_EXECUTION_ISSUES_LIMIT, sort: "recent" },
+    ],
+    queryFn: () =>
+      issuesApi.list(selectedCompanyId!, {
+        originKind: "routine_execution",
+        limit: ROUTINE_EXECUTION_ISSUES_LIMIT,
+        sort: "recent",
+      }),
     enabled: !!selectedCompanyId && activeTab === "runs",
   });
   const { data: liveRuns } = useQuery({

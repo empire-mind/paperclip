@@ -34,6 +34,7 @@ import { Identity } from "./Identity";
 import { agentUrl, projectUrl } from "../lib/utils";
 
 const SEARCH_ALL_VALUE = "__paperclip-search-all__";
+const QUICK_ISSUE_LIMIT = 20;
 
 export function buildFullSearchPath(query: string) {
   const trimmed = query.trim();
@@ -66,8 +67,8 @@ export function CommandPalette() {
   }, [open]);
 
   const { data: issues = [] } = useQuery({
-    queryKey: queryKeys.issues.list(selectedCompanyId!),
-    queryFn: () => issuesApi.list(selectedCompanyId!),
+    queryKey: [...queryKeys.issues.list(selectedCompanyId!), { limit: QUICK_ISSUE_LIMIT, sort: "recent", surface: "command-palette" }],
+    queryFn: () => issuesApi.list(selectedCompanyId!, { limit: QUICK_ISSUE_LIMIT, sort: "recent" }),
     enabled: !!selectedCompanyId && open && searchQuery.length === 0,
   });
 

@@ -1102,6 +1102,44 @@ describeEmbeddedPostgres("issueService.list participantAgentId", () => {
     );
   });
 
+  it("applies recent sort before issue list limits", async () => {
+    const companyId = randomUUID();
+    const oldCriticalIssueId = randomUUID();
+    const recentLowIssueId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(issues).values([
+      {
+        id: oldCriticalIssueId,
+        companyId,
+        title: "Old critical issue",
+        status: "todo",
+        priority: "critical",
+        updatedAt: new Date("2026-03-26T10:00:00.000Z"),
+      },
+      {
+        id: recentLowIssueId,
+        companyId,
+        title: "Recent low-priority issue",
+        status: "todo",
+        priority: "low",
+        updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+      },
+    ]);
+
+    const [defaultFirst] = await svc.list(companyId, { limit: 1 });
+    const [recentFirst] = await svc.list(companyId, { limit: 1, sort: "recent" });
+
+    expect(defaultFirst?.id).toBe(oldCriticalIssueId);
+    expect(recentFirst?.id).toBe(recentLowIssueId);
+  });
+
   it("paginates earlier comments in descending order from an anchor comment", async () => {
     const companyId = randomUUID();
     const issueId = randomUUID();

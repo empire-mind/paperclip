@@ -25,8 +25,9 @@
  * @see PLUGIN_SPEC.md §12 — Process Model
  */
 import { existsSync } from "node:fs";
-import { readdir, readFile, rm, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, rm, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -52,6 +53,7 @@ import { pluginDatabaseService } from "./plugin-database.js";
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const requireFromPluginLoader = createRequire(import.meta.url);
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -964,13 +966,19 @@ export function pluginLoader(
     let raw: unknown;
 
     try {
-      // Dynamic import works for both .js (ESM) and .cjs (CJS) manifests
-      const manifestUrl = pathToFileURL(manifestPath);
-      const manifestStat = await stat(manifestPath);
-      manifestUrl.searchParams.set("mtime", String(Math.trunc(manifestStat.mtimeMs)));
-      const mod = await import(manifestUrl.href) as Record<string, unknown>;
-      // The manifest may be the default export or the module itself
-      raw = mod["default"] ?? mod;
+      const resolvedManifestPath = await realpath(manifestPath);
+      if (path.extname(resolvedManifestPath) === ".cjs") {
+        delete requireFromPluginLoader.cache[resolvedManifestPath];
+        raw = requireFromPluginLoader(resolvedManifestPath) as unknown;
+      } else {
+        const manifestUrl = pathToFileURL(resolvedManifestPath);
+        if (!process.env.VITEST && !process.env.VITEST_WORKER_ID) {
+          const manifestStat = await stat(resolvedManifestPath);
+          manifestUrl.searchParams.set("mtime", String(Math.trunc(manifestStat.mtimeMs)));
+        }
+        const mod = await import(/* @vite-ignore */ manifestUrl.href) as Record<string, unknown>;
+        raw = mod["default"] ?? mod;
+      }
     } catch (err) {
       throw new Error(
         `Failed to load manifest module at ${manifestPath}: ${String(err)}`,

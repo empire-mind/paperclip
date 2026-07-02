@@ -21,7 +21,7 @@ import {
 } from "../lib/inbox";
 
 const INBOX_ISSUE_STATUSES = "backlog,todo,in_progress,in_review,blocked,done";
-const INBOX_BADGE_ISSUE_LIMIT = 500;
+const INBOX_BADGE_ISSUE_LIMIT = 100;
 const INBOX_BADGE_HEARTBEAT_RUN_LIMIT = 200;
 
 export function useDismissedInboxAlerts() {
@@ -175,13 +175,14 @@ export function useInboxBadge(companyId: string | null | undefined) {
   });
 
   const { data: mineIssuesRaw = [] } = useQuery({
-    queryKey: queryKeys.issues.listMineByMe(companyId!),
+    queryKey: [...queryKeys.issues.listMineByMe(companyId!), { limit: INBOX_BADGE_ISSUE_LIMIT, sort: "recent" }],
     queryFn: () =>
       issuesApi.list(companyId!, {
         touchedByUserId: "me",
         inboxArchivedByUserId: "me",
         status: INBOX_ISSUE_STATUSES,
         limit: INBOX_BADGE_ISSUE_LIMIT,
+        sort: "recent",
       }),
     enabled: !!companyId,
   });

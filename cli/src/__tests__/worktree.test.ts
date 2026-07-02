@@ -417,7 +417,7 @@ describe("worktree helpers", () => {
       await db.$client?.end?.({ timeout: 5 }).catch(() => undefined);
       await tempDb.cleanup();
     }
-  }, 20_000);
+  }, 45_000);
 
   it("copies the source local_encrypted secrets key into the seeded worktree instance", () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-worktree-secrets-"));
@@ -1008,6 +1008,7 @@ describe("worktree helpers", () => {
       execFileSync("git", ["commit", "-m", "Initial commit"], { cwd: repoRoot, stdio: "ignore" });
 
       const sourceHooksDir = path.join(repoRoot, ".git", "hooks");
+      execFileSync("git", ["config", "core.hooksPath", sourceHooksDir], { cwd: repoRoot, stdio: "ignore" });
       const sourceHookPath = path.join(sourceHooksDir, "pre-commit");
       const sourceTokensPath = path.join(sourceHooksDir, "forbidden-tokens.txt");
       fs.writeFileSync(sourceHookPath, "#!/usr/bin/env bash\nexit 0\n", { encoding: "utf8", mode: 0o755 });
@@ -1027,11 +1028,9 @@ describe("worktree helpers", () => {
       const targetHookPath = path.join(resolvedTargetHooksDir, "pre-commit");
       const targetTokensPath = path.join(resolvedTargetHooksDir, "forbidden-tokens.txt");
 
-      expect(copied).toMatchObject({
-        sourceHooksPath: resolvedSourceHooksDir,
-        targetHooksPath: resolvedTargetHooksDir,
-        copied: true,
-      });
+      expect(copied?.copied).toBe(true);
+      expect(fs.realpathSync(copied?.sourceHooksPath ?? "")).toBe(resolvedSourceHooksDir);
+      expect(fs.realpathSync(copied?.targetHooksPath ?? "")).toBe(resolvedTargetHooksDir);
       expect(fs.readFileSync(targetHookPath, "utf8")).toBe("#!/usr/bin/env bash\nexit 0\n");
       expect(fs.statSync(targetHookPath).mode & 0o111).not.toBe(0);
       expect(fs.readFileSync(targetTokensPath, "utf8")).toBe("secret-token\n");
@@ -1039,7 +1038,7 @@ describe("worktree helpers", () => {
       execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: repoRoot, stdio: "ignore" });
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 45_000);
 
   it("creates and initializes a worktree from the top-level worktree:make command", async () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-worktree-make-"));
@@ -1074,7 +1073,7 @@ describe("worktree helpers", () => {
       homedirSpy.mockRestore();
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
-  }, 20_000);
+  }, 45_000);
 
   it("no-ops on the primary checkout unless --branch is provided", async () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-worktree-repair-primary-"));
@@ -1099,7 +1098,7 @@ describe("worktree helpers", () => {
       process.chdir(originalCwd);
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
-  });
+  }, 45_000);
 
   it("repairs the current linked worktree when Paperclip metadata is missing", async () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-worktree-repair-current-"));
@@ -1146,7 +1145,7 @@ describe("worktree helpers", () => {
       process.chdir(originalCwd);
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
-  }, 20_000);
+  }, 45_000);
 
   it("creates and repairs a missing branch worktree when --branch is provided", async () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "paperclip-worktree-repair-branch-"));

@@ -18,6 +18,15 @@ const nonServerProjects = [
   "@paperclipai/ui",
   "paperclipai",
 ];
+const serverSerialArgs = [
+  "--pool=forks",
+  "--maxWorkers=1",
+  "--minWorkers=1",
+  "--poolOptions.forks.maxForks=1",
+  "--poolOptions.forks.minForks=1",
+  "--poolOptions.forks.isolate=true",
+  "--fileParallelism=false",
+];
 const routeTestPattern = /[^/]*(?:route|routes|authz)[^/]*\.test\.ts$/;
 const additionalSerializedServerTests = new Set([
   "server/src/__tests__/approval-routes-idempotency.test.ts",
@@ -238,7 +247,7 @@ function runGeneralSuites(routeTests) {
   }
 
   runVitest(
-    ["--project", "@paperclipai/server", ...excludeRouteArgs],
+    ["--project", "@paperclipai/server", ...excludeRouteArgs, ...serverSerialArgs],
     `server suites excluding ${routeTests.length} serialized suites`,
   );
 }
@@ -255,8 +264,7 @@ function runSerializedSuites(routeTests, shardIndex, shardCount) {
         "--project",
         "@paperclipai/server",
         routeTest.repoPath,
-        "--pool=forks",
-        "--poolOptions.forks.isolate=true",
+        ...serverSerialArgs,
       ],
       routeTest.repoPath,
     );
