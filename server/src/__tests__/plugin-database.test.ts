@@ -175,13 +175,13 @@ describeEmbeddedPostgres("plugin database namespaces", () => {
         name: pluginManifest.id,
         version: pluginManifest.version,
         type: "module",
-        paperclipPlugin: { manifest: "./manifest.js" },
+        paperclipPlugin: { manifest: "./manifest.cjs" },
       }),
       "utf8",
     );
     await writeFile(
-      path.join(packageRoot, "manifest.js"),
-      `export default ${JSON.stringify(pluginManifest, null, 2)};\n`,
+      path.join(packageRoot, "manifest.cjs"),
+      `module.exports = ${JSON.stringify(pluginManifest, null, 2)};\n`,
       "utf8",
     );
     await mkdir(path.join(packageRoot, "dist"), { recursive: true });

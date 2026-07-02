@@ -1,6 +1,7 @@
 import type { Request, RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "node:http";
 import { betterAuth } from "better-auth";
+import type { Auth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNodeHandler } from "better-auth/node";
 import type { Db } from "@paperclipai/db";
@@ -24,7 +25,10 @@ export type BetterAuthSessionResult = {
   user: BetterAuthSessionUser | null;
 };
 
-type BetterAuthInstance = ReturnType<typeof betterAuth>;
+type BetterAuthInstance = {
+  handler: Auth["handler"];
+  api?: unknown;
+};
 
 const AUTH_COOKIE_PREFIX_FALLBACK = "default";
 const AUTH_COOKIE_PREFIX_INVALID_SEGMENTS_RE = /[^a-zA-Z0-9_-]+/g;

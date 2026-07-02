@@ -7,6 +7,7 @@ import { createUiDevWatchOptions } from "./src/lib/vite-watch";
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   build: {
+    target: "es2023",
     minify: "esbuild",
   },
   esbuild:

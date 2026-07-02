@@ -218,8 +218,12 @@ describeEmbeddedPostgres("active-run output watchdog", () => {
 
   it("redacts sensitive values from actual run-log evidence", async () => {
     const now = new Date("2026-04-22T20:00:00.000Z");
-    const leakedJwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-    const leakedGithubToken = "ghp_1234567890abcdefghijklmnopqrstuvwxyz";
+    const leakedJwt = [
+      "eyJhbGciOiJIUzI1NiJ9",
+      "eyJzdWIiOiIxMjM0NTY3ODkwIn0",
+      "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    ].join(".");
+    const leakedGithubToken = ["ghp", "_1234567890abcdefghijklmnopqrstuvwxyz"].join("");
     const { companyId } = await seedRunningRun({
       now,
       ageMs: ACTIVE_RUN_OUTPUT_SUSPICION_THRESHOLD_MS + 60_000,

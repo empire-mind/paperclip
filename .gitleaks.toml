@@ -1,0 +1,68 @@
+title = "Paperclip gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Historical JWT redaction fixture literals in Paperclip tests"
+paths = [
+  '''server/src/__tests__/(redaction|heartbeat-active-run-output-watchdog)\.test\.ts''',
+]
+regexes = [
+  '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiIxMjM0NTY3ODkwIn0\.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c''',
+]
+condition = "AND"
+
+[[allowlists]]
+description = "Historical AWS Secrets Manager fixture ARN references in secrets-service tests"
+paths = [
+  '''server/src/__tests__/secrets-service\.test\.ts''',
+]
+regexTarget = "match"
+regexes = [
+  '''secret:prod/(duplicate|conflict|ready)''',
+]
+condition = "AND"
+
+[[allowlists]]
+description = "Historical secret-ref UUID fixture in deployment docs"
+paths = [
+  '''docs/deploy/secrets\.md''',
+]
+regexes = [
+  '''8f884973-c29b-44e4-8ea3-6413437f8081''',
+]
+condition = "AND"
+
+[[allowlists]]
+description = "Historical redaction fixture API key strings"
+paths = [
+  '''(docs/superpowers/plans/2026-05-09-paperclip-cloud-adapter-m2-plan\.md|packages/adapters/kubernetes-execution/test/unit/redaction\.test\.ts)''',
+]
+regexTarget = "secret"
+regexes = [
+  '''sk-abcdefgh1234''',
+]
+condition = "AND"
+
+[[allowlists]]
+description = "Historical generated Storybook bundles already excluded from source scans"
+paths = [
+  '''ui/storybook-static/assets/(MarkdownEditor-[A-Za-z0-9]+|iframe-[A-Za-z0-9]+)\.js''',
+]
+regexTarget = "line"
+regexes = [
+  '''(anchor\.key|[A-Za-z]\.key)''',
+]
+condition = "AND"
+
+[[allowlists]]
+description = "Generated production UI bundles already covered by source and history scans"
+paths = [
+  '''ui/dist/assets/[A-Za-z0-9_.-]+\.js''',
+]
+regexTarget = "line"
+regexes = [
+  '''(anchor\.key|[A-Za-z]\.key)''',
+]
+condition = "AND"
